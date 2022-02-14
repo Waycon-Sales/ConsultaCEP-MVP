@@ -1,6 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
-import 'package:estudo_soap_flutter/src/app/control/consult_zipcode_control.dart';
+import 'package:estudo_soap_flutter/src/app/presenter/consult_zipcode_presenter.dart';
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
@@ -11,45 +11,54 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final consultControl = ConsultZipCodeControl();
+class _HomePageState extends State<HomePage> implements ZipCodeContract {
+  late ConsultZipCodePresenter consultPresenter;
 
-  _start() {
-    print("start");
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    consultPresenter = ConsultZipCodePresenter(this);
+  }
+
+  @override
+  idle() {
     return Container(
       height: 10,
     );
   }
 
-  _loading() {
-    print("loading");
+  @override
+  loading() {
     return Center(child: CircularProgressIndicator());
   }
 
-  _error() {
-    print("error");
-    return Text("Algo deu errado :(");
+  @override
+  error() {
+    print("erro");
+    return Text(
+      "Algo deu errado :(.\n\nTente novamente! :D",
+      textAlign: TextAlign.center,
+    );
   }
 
-  _setManagerState(CallStates state, context) {
-    switch (state) {
-      case CallStates.start:
-        return _start();
-
-      case CallStates.loading:
-        return _loading();
-
-      case CallStates.error:
-        return _error();
-
-      default:
-        return _start();
-    }
+  @override
+  sucess() {
+    return Navigator.of(context).pushNamed(
+      "/Address",
+      arguments: consultPresenter.data,
+    );
   }
 
-  TextEditingController cep = TextEditingController();
+  @override
+  void changeCheckField() {
+    setState(() {});
+  }
+
   var maskFormatter = new MaskTextInputFormatter(
       mask: '#####-###', filter: {"#": RegExp(r'[0-9]')});
+
+  var isStart = false;
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +86,17 @@ class _HomePageState extends State<HomePage> {
                           height: 60,
                         ),
                         TextField(
-                          controller: cep,
+                          onChanged: (value) {
+                            setState(() {
+                              consultPresenter.isValid = true;
+                            });
+                          },
+                          controller: consultPresenter.cepField,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(),
+                            errorText: consultPresenter.isValid
+                                ? null
+                                : "Preencha o campo",
                             label: Text("CEP"),
                           ),
                           inputFormatters: [maskFormatter],
@@ -91,9 +108,8 @@ class _HomePageState extends State<HomePage> {
                           width: widthScreen,
                           height: 45,
                           child: ElevatedButton(
-                              onPressed: () {
-                                consultControl.startConsult(
-                                    cep.text.toString(), context);
+                              onPressed: () async {
+                                await consultPresenter.startConsult();
                               },
                               child: Text("Buscar Endereço")),
                         ),
@@ -101,16 +117,16 @@ class _HomePageState extends State<HomePage> {
                           height: 20,
                         ),
                         SizedBox(
-                          height: 60,
-                          child: Center(
-                            child: AnimatedBuilder(
-                                animation: consultControl.state,
-                                builder: (context, child) {
-                                  return _setManagerState(
-                                      consultControl.state.value, context);
-                                }),
-                          ),
-                        ),
+                            width: 200,
+                            height: 60,
+                            child: Center(
+                              child: AnimatedBuilder(
+                                  animation: consultPresenter.state,
+                                  builder: (context, child) {
+                                    return consultPresenter.setManagerState(
+                                        consultPresenter.state.value);
+                                  }),
+                            )),
                         SizedBox(
                           height: 20,
                         ),
